@@ -28,7 +28,7 @@ public class CanvasPanel extends JPanel {
     private int DeltaX = 0;
     private int DeltaY = 0;
 
-    // 使用策略模式處理不同模式的操作
+    // 使用模式處理不同的操作
     private ModeHandler modeHandler;
     private SelectionManager selectionManager;
     private ShapeManager shapeManager;
@@ -123,7 +123,7 @@ public class CanvasPanel extends JPanel {
     }
 
     /**
-     * 設定位移量
+     * 設定位移量DeltaX DeltaY
      */
     public void settingDeltaX_DeltaY(Point currentPoint){
         DeltaX = currentPoint.x - startPoint.x;
@@ -157,8 +157,7 @@ public class CanvasPanel extends JPanel {
     }
 
     /**
-     * 群組選取的物件 - 修正版本
-     * 支援將現有群組與其他物件重新組成新群組
+     * 群組選取的物件
      */
     public void groupSelectedShapes() {
         if (selectedShapes.size() > 1) {
@@ -174,8 +173,7 @@ public class CanvasPanel extends JPanel {
     }
 
     /**
-     * 解除群組 - 修正版本
-     * 提供選擇是否深度解除群組
+     * 解除群組
      */
     public void ungroupSelectedShape() {
         ungroupSelectedShape(false); // 預設為淺層解除群組
@@ -189,78 +187,13 @@ public class CanvasPanel extends JPanel {
         if (selectedShapes.size() == 1 && selectedShapes.get(0) instanceof CompositeShape) {
             CompositeShape group = (CompositeShape) selectedShapes.get(0);
 
-            if (deepUngroup && shapeManager instanceof ConcreteShapeManager) {
+            if (deepUngroup && shapeManager instanceof ConcreteShapeManager) { //複合式Group
                 ((ConcreteShapeManager) shapeManager).deepUngroupShape(group, shapes, selectedShapes);
             } else {
-                shapeManager.ungroupShape(group, shapes, selectedShapes);
+                shapeManager.ungroupShape(group, shapes, selectedShapes); //單層Group
             }
-
             repaint();
         }
-    }
-
-    /**
-     * 檢查選取的形狀是否可以組成群組
-     */
-    public boolean canCreateGroup() {
-        return selectedShapes.size() > 1;
-    }
-
-    /**
-     * 檢查選取的形狀是否可以解除群組
-     */
-    public boolean canUngroup() {
-        return selectedShapes.size() == 1 && selectedShapes.get(0) instanceof CompositeShape;
-    }
-
-    /**
-     * 強制重新計算所有群組的邊界
-     * 在群組操作後調用以確保邊界正確
-     */
-    public void recalculateGroupBounds() {
-        for (BaseShape shape : shapes) {
-            if (shape instanceof CompositeShape) {
-                CompositeShape group = (CompositeShape) shape;
-                // 觸發邊界重新計算
-                group.move(0, 0); // 移動0距離會觸發updateBounds
-            }
-        }
-        repaint();
-    }
-
-    /**
-     * 取得目前選取形狀的類型資訊
-     * 用於除錯和狀態顯示
-     */
-    public String getSelectionInfo() {
-        if (selectedShapes.isEmpty()) {
-            return "沒有選取任何物件";
-        }
-
-        StringBuilder info = new StringBuilder();
-        info.append("選取了 ").append(selectedShapes.size()).append(" 個物件: ");
-
-        for (int i = 0; i < selectedShapes.size(); i++) {
-            BaseShape shape = selectedShapes.get(i);
-            if (i > 0) info.append(", ");
-
-            if (shape instanceof CompositeShape) {
-                CompositeShape group = (CompositeShape) shape;
-                info.append("群組(").append(group.getShapeCount()).append("個子物件)");
-            } else if (shape instanceof BasicShape) {
-                BasicShape basic = (BasicShape) shape;
-                String name = basic.getName();
-                if (name.isEmpty()) {
-                    info.append(shape.getClass().getSimpleName());
-                } else {
-                    info.append(name);
-                }
-            } else {
-                info.append(shape.getClass().getSimpleName());
-            }
-        }
-
-        return info.toString();
     }
 
     /**
@@ -339,20 +272,12 @@ public class CanvasPanel extends JPanel {
         }
     }
 
-    // Getter 方法供內部類使用
+    // Getter
     public List<BaseShape> getShapes() { return shapes; }
-    public List<BaseShape> getSelectedShapes() { return selectedShapes; }
-    public Point getStartPoint() { return startPoint; }
-    public void setStartPoint(Point point) { this.startPoint = point; }
-    public BaseShape getCurrentShape() { return currentShape; }
-    public void setCurrentShape(BaseShape shape) { this.currentShape = shape; }
-    public ShapeFactory getShapeFactory() { return shapeFactory; }
-    public int getNextDepth() { return nextDepth++; }
-    public int getDeltaX() { return DeltaX; }
-    public int getDeltaY() { return DeltaY; }
+
     /**
-     * 模式處理器介面
-     * 使用策略模式處理不同模式的操作
+     * 模式處理interface
+     * 使用模式處理不同操作
      */
     private interface ModeHandler {
         void handlePress(Mode mode, Point point, CanvasPanel canvas);
@@ -361,7 +286,7 @@ public class CanvasPanel extends JPanel {
     }
 
     /**
-     * 具體模式處理器
+     * 實作模式處理器
      */
     private static class ConcreteModeHandler implements ModeHandler {
         private SelectModeHandler selectHandler = new SelectModeHandler();
@@ -457,10 +382,10 @@ public class CanvasPanel extends JPanel {
                 canvas.startPoint = point;
             } else {
                 // 產生選取框
-                if (canvas.currentShape == null || !(canvas.currentShape instanceof SelectionRectangle)) {
+                if (!(canvas.currentShape instanceof SelectionRectangle)) {
                     canvas.currentShape = new SelectionRectangle(canvas.startPoint, point);
                 } else {
-                    ((SelectionRectangle) canvas.currentShape).resize(canvas.startPoint, point);
+                    (canvas.currentShape).resize(canvas.startPoint, point);
                 }
             }
         }
@@ -469,7 +394,6 @@ public class CanvasPanel extends JPanel {
             if (canvas.currentShape instanceof SelectionRectangle) {
                 Rectangle selectionRect = ((SelectionRectangle) canvas.currentShape).getRectangle();
 
-                // 修正：使用改進的框選邏輯
                 selectShapesInRectangle(selectionRect, canvas);
 
                 canvas.currentShape = null;
@@ -478,7 +402,6 @@ public class CanvasPanel extends JPanel {
 
         /**
          * 框選矩形內的所有形狀
-         * 修正版本：支援群組物件的選取
          */
         private void selectShapesInRectangle(Rectangle selectionRect, CanvasPanel canvas) {
             for (BaseShape shape : canvas.shapes) {
@@ -494,22 +417,19 @@ public class CanvasPanel extends JPanel {
          * 支援不同類型的形狀
          */
         private boolean isShapeInSelectionArea(BaseShape shape, Rectangle selectionRect) {
-            if (shape instanceof BasicShape) {
-                BasicShape basicShape = (BasicShape) shape;
+            if (shape instanceof BasicShape basicShape) {
                 Rectangle shapeBounds = basicShape.getBounds();
 
                 // 檢查形狀的邊界是否與選取矩形相交或包含
                 return selectionRect.intersects(shapeBounds) || selectionRect.contains(shapeBounds);
 
-            } else if (shape instanceof CompositeShape) {
-                CompositeShape compositeShape = (CompositeShape) shape;
+            } else if (shape instanceof CompositeShape compositeShape) {
                 Rectangle groupBounds = compositeShape.getBounds();
 
                 // 對於群組，檢查群組的邊界
                 return selectionRect.intersects(groupBounds) || selectionRect.contains(groupBounds);
 
-            } else if (shape instanceof Link) {
-                Link link = (Link) shape;
+            } else if (shape instanceof Link link) {
                 Point startPoint = link.getStartPoint();
                 Point endPoint = link.getEndPoint();
 
@@ -549,13 +469,11 @@ public class CanvasPanel extends JPanel {
     private static class LinkModeHandler {
         public void handlePress(Mode mode, Point point, CanvasPanel canvas) {
             for (BaseShape shape : canvas.shapes) {
-                if (shape instanceof BasicShape && shape.contains(point)) {
-                    BasicShape basicShape = (BasicShape) shape;
+                if (shape instanceof BasicShape basicShape && shape.contains(point)) {
                     Point port = basicShape.getNearestPort(point);
                     if (port != null) {
                         canvas.currentShape = canvas.shapeFactory.createLink(mode, port);
-                        if (canvas.currentShape instanceof Link) {
-                            Link link = (Link) canvas.currentShape;
+                        if (canvas.currentShape instanceof Link link) {
                             link.setStartShape(basicShape);
                         }
                         canvas.currentShape.setDepth(canvas.nextDepth++);
@@ -573,13 +491,11 @@ public class CanvasPanel extends JPanel {
         }
 
         public void handleRelease(Mode mode, Point point, CanvasPanel canvas) {
-            if (canvas.currentShape instanceof Link) {
-                Link link = (Link) canvas.currentShape;
+            if (canvas.currentShape instanceof Link link) {
                 boolean validEnd = false;
 
                 for (BaseShape shape : canvas.shapes) {
-                    if (shape instanceof BasicShape && shape.contains(point)) {
-                        BasicShape basicShape = (BasicShape) shape;
+                    if (shape instanceof BasicShape basicShape && shape.contains(point)) {
                         Point port = basicShape.getNearestPort(point);
 
                         if (port != null) {
@@ -619,18 +535,17 @@ public class CanvasPanel extends JPanel {
     }
 
     /**
-     * 形狀管理器介面
+     * 形狀管理器interface
      */
     private interface ShapeManager {
         CompositeShape createGroup(List<BaseShape> selectedShapes, List<BaseShape> allShapes, int depth);
         void ungroupShape(CompositeShape group, List<BaseShape> allShapes, List<BaseShape> selectedShapes);
     }
 
-    // 修正 ConcreteShapeManager 中的群組邏輯
 
     /**
-     * 具體形狀管理器 - 修正版本
-     * 支援將現有群組與其他物件重新組成新群組
+     * 具體形狀管理器
+     * 將現有群組與其他物件重新組成新群組
      */
     private static class ConcreteShapeManager implements ShapeManager {
         @Override
@@ -671,7 +586,7 @@ public class CanvasPanel extends JPanel {
         }
 
         /**
-         * 深度解除群組 - 新增方法
+         * 深度解除群組
          * 遞迴地將所有巢狀群組展開為個別形狀
          */
         public void deepUngroupShape(CompositeShape group, List<BaseShape> allShapes, List<BaseShape> selectedShapes) {
